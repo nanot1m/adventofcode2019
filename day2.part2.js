@@ -1,8 +1,7 @@
 require("./Problem")({
   input() {
-    return require("fs")
-      .readFileSync("day2.input.txt", "utf8")
-      .trim()
+    return require("./Input")
+      .day(2)
       .split(",")
       .map(Number);
   },
@@ -14,7 +13,9 @@ require("./Problem")({
           if (result === 19690720) {
             return 100 * noun + verb;
           }
-        } catch {}
+        } catch (ex) {
+          console.error(ex.message);
+        }
       }
     }
   }
