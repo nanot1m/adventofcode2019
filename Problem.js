@@ -4,7 +4,8 @@ module.exports = function Problem({ input, solve }) {
       await Promise.resolve()
         .then(input)
         .then(solve)
-        .then(console.log);
+        .then(console.log)
+        .catch(console.error);
     }
   };
 };
