@@ -1,14 +1,10 @@
-module Lib
-    ( readInputForDay
-    , splitByComma
-    , splitByChar
-    , replaceNth
-    , modifyNth
-    )
-where
+module Lib where
 
 readInputForDay :: Int -> IO String
 readInputForDay day = readFile $ "../input/day" ++ show day ++ ".input.txt"
+
+readInputForDayAsCSV :: Int -> IO [String]
+readInputForDayAsCSV day = splitByComma <$> readInputForDay day
 
 splitByChar :: Char -> String -> [String]
 splitByChar char input = split input []
