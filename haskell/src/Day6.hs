@@ -22,7 +22,7 @@ part2 = do
     input <- prepareInput
     return $ case findNearestParentNode "YOU" "SAN" input of
         (Just node) -> getPathLen "YOU" node + getPathLen "SAN" node
-        Nothing      -> 0
+        Nothing     -> 0
 
 findOrbitNodes :: String -> [(String, String)] -> [OrbitTree]
 findOrbitNodes name =
