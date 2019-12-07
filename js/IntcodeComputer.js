@@ -1,24 +1,49 @@
 module.exports = {
-  program(regs) {
-    return {
-      withInput(_input) {
-        return {
-          run() {
-            return runProgram(program(regs.slice(), _input.slice()));
-          }
-        };
-      }
-    };
+  program(registries) {
+    return new Computer(program(registries, []));
   }
 };
 
+const RUNNING = "RUNNING";
+const HALTED = "HALTED";
+const WAITING_FOR_INPUT = "WAITING_FOR_INPUT";
+
+class Computer {
+  /** @param {ReturnType<typeof program>} program */
+  constructor({ registries, input, output, position, status }) {
+    this._program = {
+      registries: registries.slice(),
+      input: input.slice(),
+      output: output.slice(),
+      position: position,
+      status: status
+    };
+  }
+  /** @param {number[]} input */
+  withInput(input) {
+    return new Computer({ ...this._program, input });
+  }
+  /** @param {number[]} input */
+  pushInput(input) {
+    this._program.input.push(...input);
+    return this;
+  }
+  run() {
+    return runProgram(this._program);
+  }
+}
+
+/**
+ * @param {number[]} registries
+ * @param {number[]} input
+ */
 function program(registries, input) {
   return {
     registries,
     input,
     output: [],
     position: 0,
-    status: "Running"
+    status: RUNNING
   };
 }
 
@@ -42,8 +67,12 @@ const lt = (left, right, position) => ({ type: LT, left, right, position });
 const eq = (left, right, position) => ({ type: EQ, left, right, position });
 const halt = () => ({ type: HALT });
 
+/** @returns {ReturnType<typeof program>} */
 function runProgram(program) {
-  while (program.status === "Running") {
+  if (program.status === WAITING_FOR_INPUT && program.input.length > 0) {
+    program.status = RUNNING;
+  }
+  while (program.status === RUNNING) {
     runCommand(program, parseCommand(program));
   }
   return program;
@@ -60,8 +89,12 @@ function runCommand(program, command) {
       program.position += 4;
       break;
     case INPUT:
-      program.registries[command.position] = program.input.shift();
-      program.position += 2;
+      if (program.input.length === 0) {
+        program.status = WAITING_FOR_INPUT;
+      } else {
+        program.registries[command.position] = program.input.shift();
+        program.position += 2;
+      }
       break;
     case OUTPUT:
       program.output.push(program.registries[command.position]);
@@ -86,8 +119,8 @@ function runCommand(program, command) {
       program.position += 4;
       break;
     case HALT:
-      program.status = "Halted";
-      break;
+      program.status = HALTED;
+      return;
   }
 }
 
