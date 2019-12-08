@@ -1,7 +1,14 @@
 module Lib where
 
+import           Data.Char                      ( isSpace )
+
+trim :: String -> String
+trim = f . f where f = reverse . dropWhile isSpace
+
 readInputForDay :: Int -> IO String
-readInputForDay day = readFile $ "../input/day" ++ show day ++ ".input.txt"
+readInputForDay day = do
+    text <- readFile $ "../input/day" ++ show day ++ ".input.txt"
+    return $ trim text
 
 readInputForDayAsCSV :: Int -> IO [String]
 readInputForDayAsCSV day = splitByComma <$> readInputForDay day
@@ -22,3 +29,7 @@ modifyNth n modify (h : t) | n == 0    = modify h : t
 
 replaceNth :: Int -> a -> [a] -> [a]
 replaceNth n newVal = modifyNth n (const newVal)
+
+chunkBy :: Int -> [a] -> [[a]]
+chunkBy size [] = []
+chunkBy size xs = take size xs : chunkBy size (drop size xs)
