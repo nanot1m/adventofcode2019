@@ -5,23 +5,14 @@
   margin: 0;
 }
 
-html {
-  font-family: sans-serif;
-  background: linear-gradient(312deg, #eddcdc, #dce0ef, #b3d7f2);
-  background-size: 600% 600%;
-  animation: background 20s ease infinite;
+html,
+body {
+  height: 100%;
 }
 
-@keyframes background {
-  0% {
-    background-position: 0% 97%;
-  }
-  50% {
-    background-position: 100% 4%;
-  }
-  100% {
-    background-position: 0% 97%;
-  }
+html {
+  font-family: sans-serif;
+  background: linear-gradient(-312deg, #eddcdc, #dce0ef, #b3d7f2);
 }
 
 footer {
@@ -31,8 +22,8 @@ footer {
 .container {
   display: flex;
   flex-wrap: wrap;
-  margin: 20px auto 0;
-  padding: 0 0 0 16px;
+  margin: 0 auto;
+  padding: 20px 0 0 16px;
   max-width: 1200px;
 }
 
