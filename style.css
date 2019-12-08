@@ -12,13 +12,13 @@ html {
 .container {
   display: flex;
   flex-wrap: wrap;
-  margin: 20px auto;
-  padding: 0 16px;
+  margin: 20px auto 0;
+  padding: 0 0 0 16px;
   max-width: 1200px;
 }
 
-.container > *:not(:last-child) {
-  margin-right: 20px;
+.container > * {
+  margin-right: 16px;
 }
 
 .controls {
