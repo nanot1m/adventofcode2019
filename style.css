@@ -7,7 +7,25 @@
 
 html {
   font-family: sans-serif;
-  background-color: rgb(237, 242, 247);
+  background: linear-gradient(312deg, #eddcdc, #dce0ef, #b3d7f2);
+  background-size: 600% 600%;
+  animation: background 20s ease infinite;
+}
+
+@keyframes background {
+  0% {
+    background-position: 0% 97%;
+  }
+  50% {
+    background-position: 100% 4%;
+  }
+  100% {
+    background-position: 0% 97%;
+  }
+}
+
+footer {
+  margin-top: 40px;
 }
 
 .container {
@@ -33,6 +51,16 @@ html {
 
 .controls > *:nth-child(2n) {
   align-self: flex-start;
+}
+
+.gh-logo {
+  width: 16px;
+  margin-right: 4px;
+}
+
+.gh-link {
+  display: inline-flex;
+  align-items: center;
 }
 
 textarea {
