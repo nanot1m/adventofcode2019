@@ -17,7 +17,10 @@
       <h1>Advent of Code 2019. Day 3</h1>
     </div>
     <div class="container">
-      <canvas width="640" height="480"></canvas>
+      <div><a href="index.html">Main</a> / <span>Day 3</span></div>
+    </div>
+    <div class="container">
+      <canvas width="280" height="480"></canvas>
       <div class="controls">
         <label for="scale">Scale</label>
         <input
@@ -97,14 +100,18 @@
       const canvas = document.querySelector("canvas");
       const ctx = canvas.getContext("2d");
 
+      const HEIGHT = 320;
+
       function prepareCanvas() {
         ctx.scale(devicePixelRatio, devicePixelRatio);
-        canvas.style.height = canvas.height + "px";
-        canvas.style.width = canvas.width + "px";
-        canvas.height *= devicePixelRatio;
-        canvas.width *= devicePixelRatio;
+        const width = Math.min(window.innerWidth - 32, 640);
+        canvas.style.height = HEIGHT + "px";
+        canvas.style.width = width + "px";
+        canvas.height = HEIGHT * devicePixelRatio;
+        canvas.width = width * devicePixelRatio;
       }
       prepareCanvas();
+      window.addEventListener("resize", prepareCanvas);
 
       let scale = 0.1;
       let dx = canvas.width / 2;
@@ -191,28 +198,38 @@
        * @param {MouseEvent} event
        */
       function handleMouseMove(event) {
+        const { clientX, clientY } =
+          window.TouchEvent && event instanceof window.TouchEvent
+            ? event.changedTouches[0]
+            : event;
+
         if (lastOffsets) {
-          let ddx = event.clientX - lastOffsets.x;
-          let ddy = event.clientY - lastOffsets.y;
+          let ddx = clientX - lastOffsets.x;
+          let ddy = clientY - lastOffsets.y;
           dx += (ddx / scale) * devicePixelRatio;
           dy += (ddy / scale) * devicePixelRatio;
         }
 
         lastOffsets = {
-          x: event.clientX,
-          y: event.clientY
+          x: clientX,
+          y: clientY
         };
       }
 
-      function initScrollHandlers() {
+      function initScrollHandlers(event) {
+        event.preventDefault();
         window.addEventListener("mousemove", handleMouseMove);
+        window.addEventListener("touchmove", handleMouseMove);
         window.addEventListener("mouseup", removeScrollHandlers);
+        window.addEventListener("touchend", removeScrollHandlers);
       }
 
       function removeScrollHandlers() {
         lastOffsets = null;
         window.removeEventListener("mousemove", handleMouseMove);
+        window.removeEventListener("touchmove", handleMouseMove);
         window.removeEventListener("mouseup", removeScrollHandlers);
+        window.removeEventListener("touchend", removeScrollHandlers);
       }
 
       function applyScale(nextScale) {
@@ -223,6 +240,7 @@
       }
 
       canvas.addEventListener("mousedown", initScrollHandlers);
+      canvas.addEventListener("touchstart", initScrollHandlers);
       canvas.addEventListener("wheel", event => {
         event.preventDefault();
         let nextScale = Math.max(
