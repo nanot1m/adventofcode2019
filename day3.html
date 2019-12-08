@@ -198,7 +198,9 @@
        */
       function handleMouseMove(event) {
         const { clientX, clientY } =
-          event instanceof TouchEvent ? event.changedTouches[0] : event;
+          window.TouchEvent && event instanceof window.TouchEvent
+            ? event.changedTouches[0]
+            : event;
 
         if (lastOffsets) {
           let ddx = clientX - lastOffsets.x;
