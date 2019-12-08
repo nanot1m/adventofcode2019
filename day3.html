@@ -100,17 +100,18 @@
       const canvas = document.querySelector("canvas");
       const ctx = canvas.getContext("2d");
 
-      const windowWidth = window.innerWidth;
+      const HEIGHT = 320;
 
       function prepareCanvas() {
         ctx.scale(devicePixelRatio, devicePixelRatio);
-        const width = Math.min(windowWidth - 32, 640);
-        canvas.style.height = canvas.height + "px";
+        const width = Math.min(window.innerWidth - 32, 640);
+        canvas.style.height = HEIGHT + "px";
         canvas.style.width = width + "px";
-        canvas.height *= devicePixelRatio;
+        canvas.height = HEIGHT * devicePixelRatio;
         canvas.width = width * devicePixelRatio;
       }
       prepareCanvas();
+      window.addEventListener("resize", prepareCanvas);
 
       let scale = 0.1;
       let dx = canvas.width / 2;
