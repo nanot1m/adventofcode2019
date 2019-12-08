@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Advent of Code. Day 8</title>
+    <style>
+      *,
+      ::before,
+      ::after {
+        box-sizing: border-box;
+        margin: 0;
+      }
+
+      html {
+        font-family: sans-serif;
+      }
+
+      .container {
+        display: flex;
+        flex-wrap: wrap;
+        margin: 20px auto;
+        padding: 0 16px;
+        max-width: 1200px;
+      }
+
+      .container > *:not(:last-child) {
+        margin-right: 20px;
+      }
+
+      .controls {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        grid-auto-rows: min-content;
+        gap: 20px;
+        align-items: baseline;
+        flex-grow: 1;
+      }
+
+      .controls > *:nth-child(2n) {
+        align-self: flex-start;
+      }
+
+      textarea {
+        font-family: monospace;
+        justify-self: flex-start;
+      }
+
+      canvas {
+        margin-right: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Advent of Code 2019. Day 8</h1>
+    </div>
+    <div class="container">
+      <canvas width="640" height="480"></canvas>
+      <div class="controls">
+        <label for="input">Input data</label>
+        <textarea name="input" id="data-input" rows="20" cols="22"></textarea>
+      </div>
+    </div>
+
+    <template id="init-input">
+      11010100010111011100010111101010111011101110101011110001000101110111010101111010101110111011101011111101010001000100010001011
+    </template>
+
+    <script>
+      const BLACK = [0, 0, 0, 255];
+      const WHITE = [255, 255, 255, 255];
+      const TRANS = [0, 0, 0, 0];
+
+      const WIDTH = 25;
+      const HEIGHT = 6;
+      const SCALE = 20;
+
+      const dataInput = document.getElementById("data-input");
+      const canvas = document.querySelector("canvas");
+      const ctx = canvas.getContext("2d");
+
+      function prepareCanvas() {
+        ctx.scale(devicePixelRatio, devicePixelRatio);
+        canvas.height = (HEIGHT * SCALE) / devicePixelRatio;
+        canvas.width = (WIDTH * SCALE) / devicePixelRatio;
+        canvas.style.height = canvas.height + "px";
+        canvas.style.width = canvas.width + "px";
+        canvas.height *= devicePixelRatio;
+        canvas.width *= devicePixelRatio;
+      }
+      prepareCanvas();
+
+      function clear() {
+        ctx.fillStyle = "white";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+
+      let image = getInput();
+      dataInput.value = image;
+      dataInput.addEventListener("input", event => {
+        image = event.target.value.trim();
+      });
+
+      function draw() {
+        clear();
+        drawImage(image, WIDTH, HEIGHT);
+        requestAnimationFrame(draw);
+      }
+      draw();
+
+      function parseImage(chars, width, height) {
+        const rows = chunk(width, chars);
+        const layers = chunk(height, rows);
+        return layers;
+      }
+
+      function chunk(chunkSize, list) {
+        const result = [];
+        while (list.length) {
+          const chunk = list.slice(0, chunkSize);
+          result.push(chunk);
+          list = list.slice(chunkSize);
+        }
+        return result;
+      }
+
+      function getInput() {
+        const input = document.getElementById("init-input").innerHTML.trim();
+        return input;
+      }
+
+      function drawImage(image, width, height) {
+        const canvasData = ctx.getImageData(0, 0, width, height);
+
+        for (let i = 0; i < width; i++) {
+          for (let j = 0; j < height; j++) {
+            const pixel = getPixelType(image, i, j, width, height);
+            drawPixel(pixel, i, j, width, canvasData);
+          }
+        }
+
+        ctx.scale(SCALE, SCALE);
+        ctx.putImageData(scaleImageData(canvasData, SCALE), 0, 0);
+      }
+
+      function scaleImageData(imageData, scale) {
+        const scaled = ctx.createImageData(
+          imageData.width * scale,
+          imageData.height * scale
+        );
+
+        for (let row = 0; row < imageData.height; row++) {
+          for (let col = 0; col < imageData.width; col++) {
+            const sourcePixel = [
+              imageData.data[(row * imageData.width + col) * 4 + 0],
+              imageData.data[(row * imageData.width + col) * 4 + 1],
+              imageData.data[(row * imageData.width + col) * 4 + 2],
+              imageData.data[(row * imageData.width + col) * 4 + 3]
+            ];
+            for (let y = 0; y < scale; y++) {
+              const destRow = row * scale + y;
+              for (let x = 0; x < scale; x++) {
+                const destCol = col * scale + x;
+                for (let i = 0; i < 4; i++) {
+                  scaled.data[(destRow * scaled.width + destCol) * 4 + i] =
+                    sourcePixel[i];
+                }
+              }
+            }
+          }
+        }
+
+        return scaled;
+      }
+
+      function drawPixel(pixel, x, y, width, canvasData) {
+        const color = getPixelColor(pixel);
+        const index = (x + y * width) * 4;
+        canvasData.data[index + 0] = color[0];
+        canvasData.data[index + 1] = color[1];
+        canvasData.data[index + 2] = color[2];
+        canvasData.data[index + 3] = color[3];
+      }
+
+      function getPixelColor(pixel) {
+        switch (pixel) {
+          case "0":
+            return BLACK;
+          case "1":
+            return WHITE;
+          default:
+            return TRANS;
+        }
+      }
+
+      function getPixelType(image, x, y, width, height) {
+        let i = 0;
+        let pixel = image[x + y * width];
+        while (pixel != null) {
+          if (pixel != 2) {
+            return pixel;
+          }
+          i++;
+          pixel = image[x + y * width + i * width * height];
+        }
+        return 2;
+      }
+
+      function getPixel(image, x, y) {
+        return layer[y][x];
+      }
+    </script>
+  </body>
+</html>
