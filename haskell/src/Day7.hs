@@ -9,18 +9,13 @@ import           IntcodeComputer
 import           Data.List
 import           Debug.Trace
 
-prepareInput = do
-    registries <- map (read :: String -> Int) <$> readInputForDayAsCSV 7
-    return Program { registries = registries
-                   , input      = []
-                   , output     = []
-                   , position   = 0
-                   , status     = Running
-                   }
+prepareInput =
+    fromRegistries . map (read :: String -> Int) <$> readInputForDayAsCSV 7
+
 
 part1 = findMaxOutput <$> prepareInput
 
-part2 = findMaxOutput' <$> prepareInput
+part2 = runAmplifiersInFeedbackLoop [5, 6, 7, 8, 9] <$> prepareInput
 
 runAmplifiersWithInit :: Int -> Program -> [Int] -> Program
 runAmplifiersWithInit init p (ph1 : phs) =

@@ -9,12 +9,7 @@ import           IntcodeComputer
 
 prepareInput input = do
     registries <- map (read :: String -> Int) <$> readInputForDayAsCSV 5
-    return Program { registries = registries
-                   , input      = input
-                   , output     = []
-                   , position   = 0
-                   , status     = Running
-                   }
+    return $ (fromRegistries registries) { input = input }
 
 part1 = last . output . runProgramm <$> prepareInput [1]
 
