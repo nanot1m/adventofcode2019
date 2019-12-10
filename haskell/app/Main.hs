@@ -24,7 +24,7 @@ main = do
         "7"  -> printResults Day7.part1 Day7.part2
         "8"  -> printResults Day8.part1 Day8.part2
         "9"  -> printResults Day9.part1 Day9.part2
-        "10" -> printResults Day10.part1 Day10.part1
+        "10" -> printResults Day10.part1 Day10.part2
         _    -> putStrLn "Not implemented"
 
 

@@ -1,5 +1,6 @@
 module Day10
     ( part1
+    , part2
     )
 where
 
@@ -30,6 +31,17 @@ prepareInput =
 
 part1 = M.size . getBestPosition <$> prepareInput
 
+part2 =
+    (\(x, y) -> x * 100 + y)
+        .   (!! 199)
+        .   concat
+        .   transpose
+        .   map snd
+        .   M.toAscList
+        .   getBestPosition
+        <$> prepareInput
+
+-- Returns Map with angle as a key and asteroid positions on this line
 getBestPosition :: SpaceMap -> M.Map Double [Pos]
 getBestPosition spaceMap =
     maximumBy (comparing M.size)
