@@ -10,13 +10,12 @@ const WAITING_FOR_INPUT = "WAITING_FOR_INPUT";
 
 class Computer {
   /** @param {ReturnType<typeof program>} program */
-  constructor({ registries, input, output, position, status }) {
+  constructor({ registries, input, output, ...rest }) {
     this._program = {
       registries: registries.slice(),
       input: input.slice(),
       output: output.slice(),
-      position: position,
-      status: status
+      ...rest
     };
   }
   /** @param {number[]} input */
@@ -43,7 +42,8 @@ function program(registries, input) {
     input,
     output: [],
     position: 0,
-    status: RUNNING
+    status: RUNNING,
+    relativeBase: 0
   };
 }
 
@@ -56,15 +56,17 @@ const JIT = "JIT";
 const JIF = "JIF";
 const LT = "LT";
 const EQ = "EQ";
+const ADJUST_RB = "ADJUST_RB";
 
 const sum = (left, right, position) => ({ type: SUM, left, right, position });
 const mul = (left, right, position) => ({ type: MUL, left, right, position });
 const input = position => ({ type: INPUT, position });
-const output = position => ({ type: OUTPUT, position });
-const jit = (left, position) => ({ type: JIT, left, position });
-const jif = (left, position) => ({ type: JIF, left, position });
+const output = left => ({ type: OUTPUT, left });
+const jit = (left, right) => ({ type: JIT, left, right });
+const jif = (left, right) => ({ type: JIF, left, right });
 const lt = (left, right, position) => ({ type: LT, left, right, position });
 const eq = (left, right, position) => ({ type: EQ, left, right, position });
+const adjustRb = left => ({ type: ADJUST_RB, left });
 const halt = () => ({ type: HALT });
 
 /** @returns {ReturnType<typeof program>} */
@@ -97,14 +99,14 @@ function runCommand(program, command) {
       }
       break;
     case OUTPUT:
-      program.output.push(program.registries[command.position]);
+      program.output.push(command.left);
       program.position += 2;
       break;
     case JIT:
-      program.position = command.left ? command.position : program.position + 3;
+      program.position = command.left ? command.right : program.position + 3;
       break;
     case JIF:
-      program.position = command.left ? program.position + 3 : command.position;
+      program.position = command.left ? program.position + 3 : command.right;
       break;
     case LT:
       program.registries[command.position] = Number(
@@ -118,13 +120,17 @@ function runCommand(program, command) {
       );
       program.position += 4;
       break;
+    case ADJUST_RB:
+      program.relativeBase += command.left;
+      program.position += 2;
+      break;
     case HALT:
       program.status = HALTED;
       return;
   }
 }
 
-function parseCommand({ registries, position }) {
+function parseCommand({ registries, position, relativeBase }) {
   const registry = registries[position];
   const command = registry % 100;
   const modes = [
@@ -132,25 +138,28 @@ function parseCommand({ registries, position }) {
     Math.floor(registry / 1000) % 10,
     Math.floor(registry / 10000) % 10
   ];
-  const p = i => param(registries, modes[i - 1], position + i);
-  const pp = i => registries[position + i];
+  const p1 = () => param(registries, modes[0], position + 1, relativeBase);
+  const p2 = () => param(registries, modes[1], position + 2, relativeBase);
+  const p3 = () => param(registries, modes[2], position + 3, relativeBase);
   switch (command) {
     case 1:
-      return sum(p(1), p(2), pp(3));
+      return sum(registries[p1()], registries[p2()], p3());
     case 2:
-      return mul(p(1), p(2), pp(3));
+      return mul(registries[p1()], registries[p2()], p3());
     case 3:
-      return input(pp(1));
+      return input(p1());
     case 4:
-      return output(pp(1));
+      return output(registries[p1()]);
     case 5:
-      return jit(p(1), p(2));
+      return jit(registries[p1()], registries[p2()]);
     case 6:
-      return jif(p(1), p(2));
+      return jif(registries[p1()], registries[p2()]);
     case 7:
-      return lt(p(1), p(2), pp(3));
+      return lt(registries[p1()], registries[p2()], p3());
     case 8:
-      return eq(p(1), p(2), pp(3));
+      return eq(registries[p1()], registries[p2()], p3());
+    case 9:
+      return adjustRb(registries[p1()]);
     case 99:
       return halt();
     default:
@@ -158,9 +167,12 @@ function parseCommand({ registries, position }) {
   }
 }
 
-function param(registries, mode, position) {
+function param(registries, mode, position, relativeBase) {
   if (mode === 1) {
-    return registries[position];
+    return position;
   }
-  return registries[registries[position]];
+  if (mode === 2) {
+    return relativeBase + registries[position];
+  }
+  return registries[position];
 }
