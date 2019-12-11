@@ -18,6 +18,9 @@ class Computer {
       ...rest
     };
   }
+  isHalted() {
+    return this._program.status === HALTED;
+  }
   /** @param {number[]} input */
   withInput(input) {
     return new Computer({ ...this._program, input });
@@ -80,48 +83,44 @@ function runProgram(program) {
   return program;
 }
 
-function runCommand(program, command) {
-  switch (command.type) {
+function runCommand(program, { type, left, right, position }) {
+  switch (type) {
     case SUM:
-      program.registries[command.position] = command.left + command.right;
+      program.registries[position] = left + right;
       program.position += 4;
       break;
     case MUL:
-      program.registries[command.position] = command.left * command.right;
+      program.registries[position] = left * right;
       program.position += 4;
       break;
     case INPUT:
       if (program.input.length === 0) {
         program.status = WAITING_FOR_INPUT;
       } else {
-        program.registries[command.position] = program.input.shift();
+        program.registries[position] = program.input.shift();
         program.position += 2;
       }
       break;
     case OUTPUT:
-      program.output.push(command.left);
+      program.output.push(left);
       program.position += 2;
       break;
     case JIT:
-      program.position = command.left ? command.right : program.position + 3;
+      program.position = left ? right : program.position + 3;
       break;
     case JIF:
-      program.position = command.left ? program.position + 3 : command.right;
+      program.position = left ? program.position + 3 : right;
       break;
     case LT:
-      program.registries[command.position] = Number(
-        command.left < command.right
-      );
+      program.registries[position] = Number(left < right);
       program.position += 4;
       break;
     case EQ:
-      program.registries[command.position] = Number(
-        command.left === command.right
-      );
+      program.registries[position] = Number(left === right);
       program.position += 4;
       break;
     case ADJUST_RB:
-      program.relativeBase += command.left;
+      program.relativeBase += left;
       program.position += 2;
       break;
     case HALT:
@@ -133,14 +132,12 @@ function runCommand(program, command) {
 function parseCommand({ registries, position, relativeBase }) {
   const registry = registries[position];
   const command = registry % 100;
-  const modes = [
-    Math.floor(registry / 100) % 10,
-    Math.floor(registry / 1000) % 10,
-    Math.floor(registry / 10000) % 10
-  ];
-  const p1 = () => param(registries, modes[0], position + 1, relativeBase);
-  const p2 = () => param(registries, modes[1], position + 2, relativeBase);
-  const p3 = () => param(registries, modes[2], position + 3, relativeBase);
+  const m1 = Math.floor(registry / 100) % 10;
+  const m2 = Math.floor(registry / 1000) % 10;
+  const m3 = Math.floor(registry / 10000) % 10;
+  const p1 = () => param(registries, m1, position + 1, relativeBase);
+  const p2 = () => param(registries, m2, position + 2, relativeBase);
+  const p3 = () => param(registries, m3, position + 3, relativeBase);
   switch (command) {
     case 1:
       return sum(registries[p1()], registries[p2()], p3());
