@@ -3,7 +3,8 @@ module IntcodeComputer
     , ProgramStatus(..)
     , Int
     , runProgramm
-    , fromRegistries
+    , fromRegistries,
+    parseCommand
     )
 where
 
