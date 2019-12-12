@@ -82,6 +82,10 @@
       dataInput.addEventListener("input", ev => {
         data = ev.target.value.trim();
         moons = parseData(data);
+        light.position.set(center("x"), center("y"), center("z"));
+        camera.position.x = center("x");
+        camera.position.y = center("y");
+        camera.position.z = 30;
       });
 
       const canvasContainer = document.querySelector(".canvas-container");
