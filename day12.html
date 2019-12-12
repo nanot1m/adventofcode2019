@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Advent of Code. Day 12</title>
+    <link rel="stylesheet" href="style.css" />
+    <style>
+      canvas {
+        width: 100%;
+        height: 100%;
+      }
+      .canvas-container {
+        flex-shrink: 0;
+        flex-grow: 1;
+        height: 300px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="container">
+        <h1>Advent of Code 2019. Day 12</h1>
+      </div>
+    </header>
+    <div class="container">
+      <div><a href="index.html">Main</a> / <span>Day 12</span></div>
+    </div>
+    <div class="container">
+      <div class="canvas-container"></div>
+    </div>
+    <div class="container">
+      <div class="controls">
+        <label for="input">Input data</label>
+        <textarea name="input" id="data-input" rows="20" cols="22"></textarea>
+      </div>
+    </div>
+    <footer>
+      <div class="container">
+        <a href="https://github.com/nanot1m/adventofcode2019/" class="gh-link">
+          <img src="./GitHub-Mark-32px.png" alt="github logo" class="gh-logo" />
+          nanot1m
+        </a>
+      </div>
+    </footer>
+    <script src="js/three.js"></script>
+    <script>
+      let data = `
+<x=-7, y=17, z=-11>
+<x=9, y=12, z=5>
+<x=-9, y=0, z=-4>
+<x=4, y=6, z=0>
+                `.trim();
+
+      function parseData(input) {
+        return input
+          .trim()
+          .split("\n")
+          .map(x => x.trim())
+          .map(x => ({
+            position: parseLine(x),
+            velocity: { x: 0, y: 0, z: 0 }
+          }));
+      }
+
+      function parseLine(line) {
+        const [x, y, z] = line
+          .slice(1, -1)
+          .split(",")
+          .map(x => x.split("=")[1])
+          .map(Number);
+        return { x, y, z };
+      }
+
+      let speed = 1;
+      let moons = parseData(data);
+      const dataInput = document.getElementById("data-input");
+
+      dataInput.value = data;
+
+      dataInput.addEventListener("input", ev => {
+        data = ev.target.value.trim();
+        moons = parseData(data);
+      });
+
+      const canvasContainer = document.querySelector(".canvas-container");
+
+      const { clientWidth: width, clientHeight: height } = canvasContainer;
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
+      const renderer = new THREE.WebGLRenderer();
+      renderer.setPixelRatio(window.devicePixelRatio);
+      renderer.setSize(width, height);
+      canvasContainer.appendChild(renderer.domElement);
+
+      function onWindowResize() {
+        const { clientWidth: width, clientHeight: height } = canvasContainer;
+        camera.updateProjectionMatrix();
+        camera.aspect(width / height);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(width, height);
+      }
+
+      window.addEventListener("resize", onWindowResize, false);
+
+      const colors = [0xff1744, 0x1e88e5, 0x388e3c, 0xc0ca33];
+      const geoms = Array.from(Array(4)).map((_, idx) => {
+        const geometry = new THREE.SphereBufferGeometry(0.5, 16, 8);
+        const material = new THREE.MeshBasicMaterial({ color: colors[idx] });
+        const sphere = new THREE.Mesh(geometry, material);
+        return sphere;
+      });
+
+      const sunGeom = new THREE.SphereBufferGeometry(2, 16, 8);
+      const sunMat = new THREE.MeshBasicMaterial({ color: 0xf57c00 });
+      const sun = new THREE.Mesh(sunGeom, sunMat);
+      const center = axis => {
+        const min = Math.min(...moons.map(m => m.position[axis]));
+        const max = Math.max(...moons.map(m => m.position[axis]));
+        return (max - min) / 2 + min;
+      };
+      const light = new THREE.PointLight(0xff0040, 2, 10);
+      light.add(sun);
+      light.position.set(center("x"), center("y"), center("z"));
+
+      scene.add(light);
+
+      geoms.forEach(geom => {
+        scene.add(geom);
+      });
+
+      camera.position.x = center("x");
+      camera.position.y = center("y");
+      camera.position.z = 30;
+
+      function draw() {
+        step();
+
+        geoms.forEach((cube, idx) => {
+          Object.assign(cube.position, moons[idx].position);
+        });
+        renderer.render(scene, camera);
+
+        requestAnimationFrame(draw);
+      }
+
+      speed = 0.01;
+      moons = parseData(data);
+      draw();
+
+      function step() {
+        applyGravity();
+        appllyVelocity();
+      }
+
+      function appllyVelocity() {
+        moons.forEach(applyVelocityForMoon);
+      }
+
+      function applyVelocityForMoon(moon) {
+        applyVelocityForAxis(moon, "x");
+        applyVelocityForAxis(moon, "y");
+        applyVelocityForAxis(moon, "z");
+      }
+
+      function applyVelocityForAxis(moon, axis) {
+        moon.position[axis] += moon.velocity[axis];
+      }
+
+      function applyGravity() {
+        for (let i = 0; i < moons.length - 1; i++) {
+          for (let j = i + 1; j < moons.length; j++) {
+            applyGravityForMoons(moons[i], moons[j]);
+          }
+        }
+      }
+
+      function applyGravityForMoons(moonA, moonB) {
+        applyGravityForAxis(moonA, moonB, "x");
+        applyGravityForAxis(moonA, moonB, "y");
+        applyGravityForAxis(moonA, moonB, "z");
+      }
+
+      function toString({
+        position: { x, y, z },
+        velocity: { x: dx, y: dy, z: dz }
+      }) {
+        return `<x=${x}, y=${y}, z=${z}>, <dx=${dx}, dy=${dy}, dz=${dz}>`;
+      }
+
+      function applyGravityForAxis(moonA, moonB, axis) {
+        const delta = moonA.position[axis] - moonB.position[axis];
+        if (delta === 0) {
+          return;
+        }
+        moonA.velocity[axis] -= Math.sign(delta) * speed;
+        moonB.velocity[axis] += Math.sign(delta) * speed;
+      }
+    </script>
+  </body>
+</html>
