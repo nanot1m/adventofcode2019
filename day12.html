@@ -12,7 +12,7 @@
         height: 100%;
       }
       .canvas-container {
-        flex-shrink: 0;
+        max-width: 100%;
         flex-grow: 1;
         height: 300px;
       }
@@ -99,9 +99,10 @@
       canvasContainer.appendChild(renderer.domElement);
 
       function onWindowResize() {
-        const { clientWidth: width, clientHeight: height } = canvasContainer;
+        const { clientHeight: height } = canvasContainer;
+        const width = window.innerWidth - 40;
         camera.updateProjectionMatrix();
-        camera.aspect(width / height);
+        camera.aspect = width / height;
         renderer.setPixelRatio(window.devicePixelRatio);
         renderer.setSize(width, height);
       }
