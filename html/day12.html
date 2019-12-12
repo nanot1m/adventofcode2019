@@ -12,7 +12,7 @@
         height: 100%;
       }
       .canvas-container {
-        flex-shrink: 0;
+        max-width: 100%;
         flex-grow: 1;
         height: 300px;
       }
@@ -32,6 +32,17 @@
     </div>
     <div class="container">
       <div class="controls">
+        <label for="scale">Speed</label>
+        <input
+          type="range"
+          name="speed"
+          id="speed"
+          min="0.01"
+          max="1"
+          step="0.01"
+        />
+        <label for="scale">Zoom</label>
+        <input type="range" name="zoom" id="zoom" min="20" max="200" step="1" />
         <label for="input">Input data</label>
         <textarea name="input" id="data-input" rows="20" cols="22"></textarea>
       </div>
@@ -73,15 +84,30 @@
         return { x, y, z };
       }
 
-      let speed = 1;
+      let speed = 0.01;
+      let zoom = 30;
       let moons = parseData(data);
       const dataInput = document.getElementById("data-input");
+      const speedInput = document.getElementById("speed");
+      const zoomInput = document.getElementById("zoom");
+
+      speedInput.value = speed;
+      speedInput.addEventListener("input", ev => {
+        speed = Number(event.target.value);
+      });
+      zoomInput.value = zoom;
+      zoomInput.addEventListener("input", ev => {
+        camera.position.z = Number(event.target.value);
+      });
 
       dataInput.value = data;
-
       dataInput.addEventListener("input", ev => {
         data = ev.target.value.trim();
         moons = parseData(data);
+        light.position.set(center("x"), center("y"), center("z"));
+        camera.position.x = center("x");
+        camera.position.y = center("y");
+        camera.position.z = zoom;
       });
 
       const canvasContainer = document.querySelector(".canvas-container");
@@ -95,9 +121,10 @@
       canvasContainer.appendChild(renderer.domElement);
 
       function onWindowResize() {
-        const { clientWidth: width, clientHeight: height } = canvasContainer;
+        const { clientHeight: height } = canvasContainer;
+        const width = window.innerWidth - 40;
         camera.updateProjectionMatrix();
-        camera.aspect(width / height);
+        camera.aspect = width / height;
         renderer.setPixelRatio(window.devicePixelRatio);
         renderer.setSize(width, height);
       }
@@ -106,7 +133,7 @@
 
       const colors = [0xff1744, 0x1e88e5, 0x388e3c, 0xc0ca33];
       const geoms = Array.from(Array(4)).map((_, idx) => {
-        const geometry = new THREE.SphereBufferGeometry(0.5, 16, 8);
+        const geometry = new THREE.SphereBufferGeometry(1, 16, 8);
         const material = new THREE.MeshBasicMaterial({ color: colors[idx] });
         const sphere = new THREE.Mesh(geometry, material);
         return sphere;
@@ -132,7 +159,7 @@
 
       camera.position.x = center("x");
       camera.position.y = center("y");
-      camera.position.z = 30;
+      camera.position.z = zoom;
 
       function draw() {
         step();
@@ -145,7 +172,6 @@
         requestAnimationFrame(draw);
       }
 
-      speed = 0.01;
       moons = parseData(data);
       draw();
 
