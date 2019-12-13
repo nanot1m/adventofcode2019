@@ -94,9 +94,6 @@ buildNextHull (result, p) = (result', p'')
     curColor                  = fromMaybe Black (M.lookup pos grid)
     p''                       = p' { input = input p' ++ [fromEnum curColor] }
 
-isHalted :: Program -> Bool
-isHalted = (== Halted) . status
-
 drawMap :: Pos -> Dir -> Grid -> String
 drawMap pos dir grid = unlines image
   where

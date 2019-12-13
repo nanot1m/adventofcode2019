@@ -3,8 +3,9 @@ module IntcodeComputer
     , ProgramStatus(..)
     , Int
     , runProgramm
-    , fromRegistries,
-    parseCommand
+    , fromRegistries
+    , parseCommand
+    , isHalted
     )
 where
 
@@ -133,3 +134,6 @@ param Program { registries = regs, relativeBase = rb } mode pos = case mode of
     0 -> getP pos regs
     1 -> pos
     2 -> rb + getP pos regs
+
+isHalted :: Program -> Bool
+isHalted = (== Halted) . status
