@@ -1,5 +1,3 @@
-const Computer = require("./IntcodeComputer");
-
 require("./Problem")({
   input() {
     return require("./Input")
@@ -7,11 +5,16 @@ require("./Problem")({
       .split(",")
       .map(Number);
   },
-  solve(registries) {
-    const program = Computer.program(registries);
+  async solve(registries) {
+    const program = require("./IntcodeComputer").program(registries);
     const { result, map, oxygenPos } = bfs(program);
     drawMap(map, {});
-    return result;
+
+    const result2 = await spreadOxygen(oxygenPos, map);
+    return {
+      "Part 1": result,
+      "Part 2": result2
+    };
   }
 }).run();
 
@@ -28,6 +31,28 @@ const MapObjects = {
   OxygenSystem: 2
 };
 
+const delay = t => new Promise(r => setTimeout(r, t));
+
+async function spreadOxygen(oxygenPos, map) {
+  const queue = [[oxygenPos, 0]];
+
+  let max = 0;
+  while (queue.length) {
+    const [curPos, len] = queue.shift();
+    const allowedPositions = getAllowedPositions(curPos, map);
+    max = Math.max(max, len);
+    allowedPositions.forEach(pos => {
+      map[pos.y][pos.x] = MapObjects.OxygenSystem;
+      queue.push([pos, len + 1]);
+    });
+
+    drawMap(map, curPos);
+    await delay(16);
+  }
+
+  return max;
+}
+
 function bfs(initProgram) {
   const map = {};
   const queue = [[Direction.North, { x: 0, y: 0 }, initProgram, 0]];
@@ -36,6 +61,7 @@ function bfs(initProgram) {
   let result;
   while (queue.length) {
     const [direction, curPos, program, length] = queue.shift();
+
     const nextProgram = makeMove(program, direction);
     const status = getStatus(nextProgram);
     const nextPos = markOnMap(curPos, status, map, direction);
@@ -70,32 +96,33 @@ function drawMap(map, position) {
     }
   }
 
-  let result = "-".repeat(maxX - minX + 3) + "\n";
+  let result = "";
   for (let y = minY; y <= maxY; y++) {
-    let line = "|";
+    let line = "";
     for (let x = minX; x <= maxX; x++) {
       if (position.x === x && position.y === y) {
-        line += "O";
+        line += "D ";
       } else {
         line += getCh({ x, y }, map);
       }
     }
-    result += line + "|\n";
+    result += line + "\n";
   }
-  result += "-".repeat(maxX - minX + 3);
-  console.log(result);
+  process.stdout.clearScreenDown();
+  process.stdout.cursorTo(0, 0);
+  process.stdout.write(result);
 }
 
 function getCh(pos, map) {
   switch (getM(pos, map)) {
     case MapObjects.Empty:
-      return ".";
+      return ". ";
     case MapObjects.Wall:
-      return "#";
+      return "# ";
     case MapObjects.OxygenSystem:
-      return "Y";
+      return "0 ";
     default:
-      return " ";
+      return "  ";
   }
 }
 
@@ -134,6 +161,17 @@ function getUnvisitedDirections({ x, y }, map) {
     const { dx, dy } = getDeltaXYForDirection(direction);
     if (getM({ x: x + dx, y: y + dy }, map) == null) {
       result.push(direction);
+    }
+  });
+  return result;
+}
+
+function getAllowedPositions({ x, y }, map) {
+  const result = [];
+  Object.values(Direction).forEach(direction => {
+    const { dx, dy } = getDeltaXYForDirection(direction);
+    if (getM({ x: x + dx, y: y + dy }, map) == MapObjects.Empty) {
+      result.push({ x: x + dx, y: y + dy });
     }
   });
   return result;
