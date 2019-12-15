@@ -18,6 +18,12 @@ class Computer {
       ...rest
     };
   }
+  get output() {
+    return this._program.output;
+  }
+  clone() {
+    return new Computer({ ...this._program });
+  }
   isHalted() {
     return this._program.status === HALTED;
   }
