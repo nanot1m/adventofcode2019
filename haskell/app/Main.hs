@@ -13,6 +13,7 @@ import qualified Day9
 import qualified Day10
 import qualified Day11
 import qualified Day13
+import qualified Day16
 
 main :: IO ()
 main = do
@@ -29,6 +30,7 @@ main = do
         "10" -> printResults Day10.part1 Day10.part2
         "11" -> printResults Day11.part1 Day11.part2
         "13" -> printResults Day13.part1 Day13.part2
+        "16" -> printResults Day16.part1 Day16.part2
         _    -> putStrLn "Not implemented"
 
 
