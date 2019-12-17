@@ -428,7 +428,7 @@ Function C:   ${fnC}
   let slides;
   dataInput.value = getInput();
   dataInput.addEventListener("input", event => {
-    slides = processInput(event.target.value.trim());
+    processInput(event.target.value.trim());
   });
   stepInput.addEventListener("input", event => {
     const idx = Number(event.target.value);
