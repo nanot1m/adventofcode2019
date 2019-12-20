@@ -261,6 +261,9 @@ function drawMap(
       if (getM(x0, y0, outerPortals) && level === 0) {
         disabled = true;
       }
+      if (target.x === x0 && target.y === y0) {
+        disabled = level !== 0;
+      }
       drawPortal(ctx, x, y, scale, val, disabled);
     }
     if (x0 === curPos.x && y0 === curPos.y) {
@@ -363,7 +366,7 @@ function main() {
     }
     score++;
 
-    if (curPos.x === target.x && curPos.y === target.y) {
+    if (curPos.x === target.x && curPos.y === target.y && level === 0) {
       alert("YOU WIN! SCORE: " + score);
     }
   }
