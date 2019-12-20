@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Advent of Code. Day 20</title>
+    <link rel="stylesheet" href="style.css" />
+    <style>
+      .game-menu {
+        display: flex;
+        flex: 1;
+        justify-content: flex-end;
+      }
+
+      .game-controls {
+        flex: 1;
+        display: flex;
+        justify-content: center;
+      }
+
+      .game-button {
+        margin-left: 10px;
+        margin-right: 10px;
+        width: 42px;
+        height: 42px;
+        font-size: 30px;
+        border-radius: 10px;
+        background-color: transparent;
+      }
+
+      .level,
+      .score {
+        display: flex;
+        flex-direction: column;
+        margin-right: 10px;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="container">
+        <h1>Advent of Code 2019. Day 20</h1>
+      </div>
+    </header>
+    <div class="container">
+      <div><a href="index.html">Main</a> / <span>Day 20</span></div>
+      <div class="game-menu">
+        <div class="level">Level: <span id="level-value">0</span></div>
+        <div class="score">Score: <span id="score-value">0</span></div>
+        <button id="load-map">Load map</button>
+      </div>
+    </div>
+    <div class="container">
+      <canvas width="480" height="480"></canvas>
+    </div>
+    <div class="container">
+      <div class="game-controls">
+        <button class="game-button" data-direction="left">👈</button>
+        <button class="game-button" data-direction="up">👆</button>
+        <button class="game-button" data-direction="down">👇</button>
+        <button class="game-button" data-direction="right">👉</button>
+      </div>
+    </div>
+    <footer>
+      <div class="container">
+        <a href="https://github.com/nanot1m/adventofcode2019/" class="gh-link">
+          <img src="./GitHub-Mark-32px.png" alt="github logo" class="gh-logo" />
+          nanot1m
+        </a>
+      </div>
+    </footer>
+    <script>
+      window.initData = `
+                   A               
+                   A               
+  #################.#############  
+  #.#...#...................#.#.#  
+  #.#.#.###.###.###.#########.#.#  
+  #.#.#.......#...#.....#.#.#...#  
+  #.#########.###.#####.#.#.###.#  
+  #.............#.#.....#.......#  
+  ###.###########.###.#####.#.#.#  
+  #.....#        A   C    #.#.#.#  
+  #######        S   P    #####.#  
+  #.#...#                 #......VT
+  #.#.#.#                 #.#####  
+  #...#.#               YN....#.#  
+  #.###.#                 #####.#  
+DI....#.#                 #.....#  
+  #####.#                 #.###.#  
+ZZ......#               QG....#..AS
+  ###.###                 #######  
+JO..#.#.#                 #.....#  
+  #.#.#.#                 ###.#.#  
+  #...#..DI             BU....#..LF
+  #####.#                 #.#####  
+YN......#               VT..#....QG
+  #.###.#                 #.###.#  
+  #.#...#                 #.....#  
+  ###.###    J L     J    #.#.###  
+  #.....#    O F     P    #.#...#  
+  #.###.#####.#.#####.#####.###.#  
+  #...#.#.#...#.....#.....#.#...#  
+  #.#####.###.###.#.#.#########.#  
+  #...#.#.....#...#.#.#.#.....#.#  
+  #.###.#####.###.###.#.#.#######  
+  #.#.........#...#.............#  
+  #########.###.###.#############  
+           B   J   C               
+           U   P   P  `;
+    </script>
+    <script type="module" src="js/day20.js"></script>
+  </body>
+</html>
