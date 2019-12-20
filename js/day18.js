@@ -92,66 +92,6 @@ function locateObjectsOnMap(map) {
   return { keys, doors, entrance };
 }
 
-function solve(input) {
-  const { map, width, height } = parseMap(input);
-  const { keys, doors, entrance } = locateObjectsOnMap(map);
-  map.width = width;
-  map.height = height;
-  drawMap(map, width, height);
-  const result = solutionBFS(entrance, map, keys);
-  return Math.min(...result);
-}
-
-function solutionBFS(entrance, map, allKeys) {
-  const result = [];
-
-  const queue = [[entrance, {}, 0]];
-
-  while (queue.length) {
-    const [curPosition, availableKeys, curDistance] = queue.shift();
-    // console.clear();
-    // console.log(Object.keys(availableKeys).join(", "));
-    if (Object.keys(allKeys).length === Object.keys(availableKeys).length) {
-      result.push(curDistance);
-      continue;
-    }
-
-    const accessibleKeys = getAccessibleKeys(curPosition, map, availableKeys);
-    for (const [{ x, y, val }, distanceToKey] of accessibleKeys) {
-      queue.push([
-        { x, y },
-        { ...availableKeys, [val]: true },
-        distanceToKey + curDistance
-      ]);
-    }
-  }
-
-  return result;
-}
-
-function getAccessibleKeys(curPosition, map, availableKeys) {
-  const queue = [[curPosition, 0]];
-  const visited = {};
-  const result = [];
-  while (queue.length) {
-    const [position, distance] = queue.shift();
-    const next = getAllowedPositions(position, map, availableKeys);
-    for (const { x, y } of next) {
-      if (getM(x, y, visited)) {
-        continue;
-      }
-      setM(x, y, true, visited);
-      const valueAtPos = getM(x, y, map);
-      if (isKey(valueAtPos) && !availableKeys[valueAtPos]) {
-        result.push([{ val: valueAtPos, x, y }, distance + 1]);
-      }
-      queue.push([{ x, y }, distance + 1]);
-    }
-  }
-
-  return result;
-}
-
 const Deltas = [
   [0, -1],
   [1, 0],
@@ -159,20 +99,150 @@ const Deltas = [
   [-1, 0]
 ];
 
-function getAllowedPositions(curPosition, map, availableKeys) {
-  const result = [];
-  const { x, y } = curPosition;
-  for (const [dx, dy] of Deltas) {
-    const target = getM(x + dx, y + dy, map);
-    if (isWall(target)) {
-      continue;
-    }
-    if (isDoor(target) && !availableKeys[target.toLowerCase()]) {
-      continue;
-    }
-    result.push({ x: x + dx, y: y + dy });
+function getAllKeyDistancesAndDoors(entrance, keys, map) {
+  const result = {
+    "@": getDistancesAndDoors(entrance, map)
+  };
+
+  for (const key of Object.values(keys)) {
+    result[key.val] = getDistancesAndDoors(key, map);
   }
+
   return result;
+}
+
+function getDistancesAndDoors(key, map) {
+  const result = {};
+
+  const queue = [[key, [], 0]];
+  const visited = { [key.y]: { [key.x]: true } };
+  while (queue.length) {
+    const [pos, doors, distance] = queue.shift();
+
+    for (const [dx, dy] of Deltas) {
+      const x = pos.x + dx;
+      const y = pos.y + dy;
+      if (getM(x, y, visited)) {
+        continue;
+      }
+      setM(x, y, true, visited);
+      const val = getM(x, y, map);
+      let nextDoors = doors;
+      if (isWall(val)) {
+        continue;
+      }
+      if (isDoor(val)) {
+        nextDoors = doors.concat(val);
+      }
+      if (isKey(val)) {
+        result[val] = { distance: distance + 1, key: val, doors };
+      }
+      queue.push([{ x, y }, nextDoors, distance + 1]);
+    }
+  }
+
+  return result;
+}
+
+function getAccessibleKeys(val, allDistancesAndDoors, availableKeys) {
+  const distancesAndDoors = allDistancesAndDoors[val];
+
+  const result = {};
+
+  outer: for (const key in distancesAndDoors) {
+    const { doors, distance } = distancesAndDoors[key];
+    if (availableKeys[key]) {
+      continue;
+    }
+    for (let i = 0; i < doors.length; i++) {
+      if (!availableKeys[doors[i].toLowerCase()]) {
+        continue outer;
+      }
+    }
+    result[key] = distance;
+  }
+
+  return result;
+}
+
+function bfs(allDistancesAndDoors) {
+  let result = Infinity;
+  const queue = [["@", 0, {}]];
+
+  const allKeysCount = Object.keys(allDistancesAndDoors).length - 1;
+
+  while (queue.length) {
+    const [val, distance, availableKeys] = queue.shift();
+    if (Object.keys(availableKeys).length === allKeysCount) {
+      result = Math.min(result, distance);
+      continue;
+    }
+
+    const accessibleKeys = getAccessibleKeys(
+      val,
+      allDistancesAndDoors,
+      availableKeys
+    );
+
+    for (let key in accessibleKeys) {
+      queue.push([
+        key,
+        distance + accessibleKeys[key],
+        { ...availableKeys, [key]: true }
+      ]);
+    }
+  }
+
+  return result;
+}
+
+function dfs(allDistancesAndDoors) {
+  const getKey = (key, availableKeys) =>
+    key +
+    "-" +
+    Object.keys(availableKeys)
+      .sort()
+      .join();
+
+  const allKeysCount = Object.keys(allDistancesAndDoors).length - 1;
+  const cache = {};
+  function rec(key, availableKeys) {
+    const cacheKey = getKey(key, availableKeys);
+    if (cache[key]) {
+      return cache[key];
+    }
+
+    if (Object.keys(availableKeys).length === allKeysCount) {
+      cache[cacheKey] = 0;
+      return 0;
+    }
+
+    let min = Infinity;
+
+    const keys = getAccessibleKeys(key, allDistancesAndDoors, availableKeys);
+
+    for (let key2 in keys) {
+      availableKeys[key2] = true;
+      const curRes = keys[key2] + rec(key2, availableKeys);
+      min = Math.min(curRes, min);
+      delete availableKeys[key2];
+    }
+    cache[cacheKey] = min;
+    return min;
+  }
+
+  return rec("@", {});
+}
+
+function solve(input) {
+  const { map, width, height } = parseMap(input);
+  const { keys, doors, entrance } = locateObjectsOnMap(map);
+
+  const distancesAndDoors = getAllKeyDistancesAndDoors(entrance, keys, map);
+
+  drawMap(map, width, height);
+  // return bfs(distancesAndDoors);
+  return dfs(distancesAndDoors);
 }
 
 require("./Problem")({
@@ -180,7 +250,7 @@ require("./Problem")({
     return require("./Input").day(18);
   },
   solve
-});
+}).run();
 
 const case1 = `
 #########
@@ -218,8 +288,7 @@ const case4 = `
 #l.F..d...h..C.m#
 #################
 `;
-
-assert.equal(solve(case4), 136);
+// assert.equal(solve(case4), 136);
 
 const case5 = `
 ########################
