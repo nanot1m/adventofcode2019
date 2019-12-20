@@ -261,7 +261,7 @@ function drawMap(
       if (getM(x0, y0, outerPortals) && level === 0) {
         disabled = true;
       }
-      if (target.x === x0 && target.y === y0) {
+      if (val === "Z") {
         disabled = level !== 0;
       }
       drawPortal(ctx, x, y, scale, val, disabled);
@@ -349,6 +349,9 @@ function main() {
     if (isPortal(val)) {
       if (getM(x, y, outerPortals)) {
         return level > 0;
+      }
+      if (val === "Z") {
+        return level === 0;
       }
       return true;
     }
