@@ -22,17 +22,17 @@ const Techniques = {
  *
  * @param {string} line
  */
-function parseCommand(line) {
+function parseCommand(line, converter = Number) {
   if (line.startsWith(Techniques.DealIntoNewStack)) {
     return { type: Techniques.DealIntoNewStack };
   }
   if (line.startsWith(Techniques.CutNCards)) {
     const n = line.slice(Techniques.CutNCards.length + 1);
-    return { type: Techniques.CutNCards, count: Number(n) };
+    return { type: Techniques.CutNCards, count: converter(n) };
   }
   if (line.startsWith(Techniques.DealWithIncrementN)) {
     const n = line.slice(Techniques.DealWithIncrementN.length + 1);
-    return { type: Techniques.DealWithIncrementN, count: Number(n) };
+    return { type: Techniques.DealWithIncrementN, count: converter(n) };
   }
   return null;
 }
@@ -49,24 +49,51 @@ function part1(lines) {
 }
 
 function part2(lines) {
-  // let deck = createDeck(119315717514047);
-  // let order = 101741582076661;
-  // const techs = toTechniques(lines);
-  // while (order--) {
-  //   deck = techs.reduce(applyTechnique, deck);
-  // }
+  // from https://github.com/caderek/aoc2019/blob/master/src/day22/index.ts
+  // explanations:
+  // - https://www.reddit.com/r/adventofcode/comments/ee0rqi/2019_day_22_solutions/fbnkaju/
+  // - https://przybyl.io/solution-explanation-to-day-22-of-advent-of-code-2019.html
+  const techniques = toTechniques(lines, BigInt);
+  const times = 101741582076661n;
+  const deckSize = 119315717514047n;
+  const cardPosition = 2020n;
 
-  return void 2020;
+  let incMultiplier = 1n;
+  let offsetDiff = 0n;
+
+  for (const technique of techniques) {
+    switch (technique.type) {
+      case Techniques.DealIntoNewStack: {
+        incMultiplier = -incMultiplier % deckSize;
+        offsetDiff = (offsetDiff + incMultiplier) % deckSize;
+        break;
+      }
+      case Techniques.CutNCards: {
+        offsetDiff = (offsetDiff + technique.count * incMultiplier) % deckSize;
+        break;
+      }
+      case Techniques.DealWithIncrementN: {
+        incMultiplier =
+          (incMultiplier * modInv(technique.count, deckSize)) % deckSize;
+        break;
+      }
+    }
+  }
+
+  const inc = modPow(incMultiplier, times, deckSize);
+  const mi = modInv((1n - incMultiplier) % deckSize, deckSize);
+  const offset = (offsetDiff * (1n - inc) * mi) % deckSize;
+  return Number((offset + inc * cardPosition) % deckSize);
 }
 
 /**
  *
  * @param {string[]} lines
  */
-function toTechniques(lines) {
+function toTechniques(lines, converter = Number) {
   const result = [];
   for (const line of lines) {
-    const technique = parseCommand(line);
+    const technique = parseCommand(line, converter);
     if (technique) {
       result.push(technique);
     }
@@ -111,24 +138,116 @@ function applyDealWithIncrement(n, deck) {
   return result;
 }
 
-// const case1 = `
-// deal into new stack
-// cut -2
-// deal with increment 7
-// cut 8
-// cut -4
-// deal with increment 7
-// cut 3
-// deal with increment 9
-// deal with increment 3
-// cut -1
-// `
-//   .trim()
-//   .split("\n")
-//   .map(parseCommand)
-//   .reduce(
-//     applyTechnique,
-//     Array.from(Array(10), (_, i) => i)
-//   );
+const _ZERO = BigInt(0);
+const _ONE = BigInt(1);
+const _TWO = BigInt(2);
 
-// console.log(case1);
+/**
+ * Finds the smallest positive element that is congruent to a in modulo n
+ * @param {number|bigint} a An integer
+ * @param {number|bigint} n The modulo
+ *
+ * @returns {bigint} The smallest positive representation of a in modulo n
+ */
+function toZn(a, n) {
+  n = BigInt(n);
+  if (n <= 0) return NaN;
+
+  a = BigInt(a) % n;
+  return a < 0 ? a + n : a;
+}
+
+/**
+ * Modular inverse.
+ *
+ * @param {number|bigint} a The number to find an inverse for
+ * @param {number|bigint} n The modulo
+ *
+ * @returns {bigint} the inverse modulo n or NaN if it does not exist
+ */
+function modInv(a, n) {
+  if ((a == _ZERO) | (n <= _ZERO)) return NaN;
+
+  let egcd = eGcd(toZn(a, n), n);
+  if (egcd.b !== _ONE) {
+    return NaN; // modular inverse does not exist
+  } else {
+    return toZn(egcd.x, n);
+  }
+}
+
+/**
+ * @typedef {Object} egcdReturn A triple (g, x, y), such that ax + by = g = gcd(a, b).
+ * @property {bigint} g
+ * @property {bigint} x
+ * @property {bigint} y
+ */
+/**
+ * An iterative implementation of the extended euclidean algorithm or extended greatest common divisor algorithm.
+ * Take positive integers a, b as input, and return a triple (g, x, y), such that ax + by = g = gcd(a, b).
+ *
+ * @param {number|bigint} a
+ * @param {number|bigint} b
+ *
+ * @returns {egcdReturn} A triple (g, x, y), such that ax + by = g = gcd(a, b).
+ */
+function eGcd(a, b) {
+  a = BigInt(a);
+  b = BigInt(b);
+  if ((a <= _ZERO) | (b <= _ZERO)) return NaN; // a and b MUST be positive
+
+  let x = _ZERO;
+  let y = _ONE;
+  let u = _ONE;
+  let v = _ZERO;
+
+  while (a !== _ZERO) {
+    let q = b / a;
+    let r = b % a;
+    let m = x - u * q;
+    let n = y - v * q;
+    b = a;
+    a = r;
+    x = u;
+    y = v;
+    u = m;
+    v = n;
+  }
+  return {
+    b: b,
+    x: x,
+    y: y
+  };
+}
+
+/**
+ * Modular exponentiation b**e mod n. Currently using the right-to-left binary method
+ *
+ * @param {number|bigint} b base
+ * @param {number|bigint} e exponent
+ * @param {number|bigint} n modulo
+ *
+ * @returns {bigint} b**e mod n
+ */
+function modPow(b, e, n) {
+  n = BigInt(n);
+  if (n === _ZERO) return NaN;
+  else if (n === _ONE) return _ZERO;
+
+  b = toZn(b, n);
+
+  e = BigInt(e);
+  if (e < _ZERO) {
+    return modInv(modPow(b, abs(e), n), n);
+  }
+
+  let r = _ONE;
+  while (e > 0) {
+    if (e % _TWO === _ONE) {
+      r = (r * b) % n;
+    }
+    e = e / _TWO;
+    b = b ** _TWO % n;
+  }
+  return r;
+}
