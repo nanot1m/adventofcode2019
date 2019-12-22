@@ -89,7 +89,8 @@ function isEntrance(val) {
 function locateObjectsOnMap(map) {
   const keys = {};
   const doors = {};
-  let entrance = null;
+  let entrances = [];
+  let idx = 0;
   for (const { val, x, y } of traverseMap(map)) {
     if (isKey(val)) {
       keys[val] = { val, x, y };
@@ -98,10 +99,10 @@ function locateObjectsOnMap(map) {
       doors[val] = { val, x, y };
     }
     if (isEntrance(val)) {
-      entrance = { x, y };
+      entrances.push({ val: val + idx++, x, y });
     }
   }
-  return { keys, doors, entrance };
+  return { keys, doors, entrances };
 }
 
 const Deltas = [
@@ -111,10 +112,11 @@ const Deltas = [
   [-1, 0]
 ];
 
-function getPositions(entrance, keys, map) {
-  const result = { "@": getPositionsForKey(entrance, map) };
-  for (const key of Object.values(keys)) {
-    result[key.val] = getPositionsForKey(key, map);
+function getPositions(entrances, keys, map) {
+  const result = {};
+  const objects = entrances.concat(Object.values(keys));
+  for (const obj of objects) {
+    result[obj.val] = getPositionsForKey(obj, map);
   }
   return result;
 }
@@ -166,7 +168,7 @@ function getAccessibleKeys(val, positions, keys) {
 
 function getAllKeysB(positions) {
   return Object.keys(positions)
-    .filter(x => x !== "@")
+    .filter(x => !x.startsWith("@"))
     .reduce((acc, x) => acc | BIT_MAP[x], 0);
 }
 
@@ -182,29 +184,53 @@ function toArray(flags) {
   return result.map(x => Object.entries(BIT_MAP).find(([a, b]) => b === x)[0]);
 }
 
-function dfs(
-  positions,
-  allKeys = getAllKeysB(positions),
-  current = "@",
-  distance = 0,
-  keys = 0,
-  memo = {}
-) {
+function bfs(positions, entrances) {
+  let result = Infinity;
+  const queue = entrances.map(key => [key, 0, 0]);
+
+  const allKeys = getAllKeysB(positions);
+
+  while (queue.length) {
+    const [val, distance, keys] = queue.shift();
+
+    if (keys === allKeys) {
+      result = Math.min(result, distance);
+      continue;
+    }
+
+    const accessibleKeys = getAccessibleKeys(val, positions, keys);
+
+    for (let key in accessibleKeys) {
+      const nDistance = distance + accessibleKeys[key][0];
+      const nKeys = keys | accessibleKeys[key][1];
+      queue.push([key, nDistance, nKeys]);
+    }
+  }
+
+  return result;
+}
+
+function dfs(positions, allKeys, currents, distance = 0, keys = 0, memo = {}) {
   if (keys === allKeys) {
     return distance;
   }
 
-  const mKey = distance + current + keys;
+  const mKey = distance + currents.join("") + keys;
   if (memo[mKey] != null) {
     return memo[mKey];
   }
 
-  const accessibleKeys = getAccessibleKeys(current, positions, keys);
   const results = [];
-  for (let key in accessibleKeys) {
-    const nDistance = distance + accessibleKeys[key][0];
-    const nKeys = keys | accessibleKeys[key][1];
-    results.push(dfs(positions, allKeys, key, nDistance, nKeys, memo));
+  for (let i = 0; i < currents.length; i++) {
+    const current = currents[i];
+    const accessibleKeys = getAccessibleKeys(current, positions, keys);
+    for (let key in accessibleKeys) {
+      const nDistance = distance + accessibleKeys[key][0];
+      const nKeys = keys | accessibleKeys[key][1];
+      const nCurrents = currents.slice();
+      nCurrents[i] = key;
+      results.push(dfs(positions, allKeys, nCurrents, nDistance, nKeys, memo));
+    }
   }
 
   let result = Math.min(...results);
@@ -212,21 +238,63 @@ function dfs(
   return result;
 }
 
-function solve(input) {
+function part1(input) {
   const { map, width, height } = parseMap(input);
-  const { keys, entrance } = locateObjectsOnMap(map);
+  const { keys, entrances } = locateObjectsOnMap(map);
 
-  const positions = getPositions(entrance, keys, map);
+  const positions = getPositions(entrances, keys, map);
 
-  drawMap(map, width, height);
-  return dfs(positions);
+  // drawMap(map, width, height);
+  return dfs(
+    positions,
+    getAllKeysB(positions),
+    entrances.map(x => x.val)
+  );
+}
+
+function modifyMap(map) {
+  const center = { x: 0, y: 0 };
+  for (const { x, y, val } of traverseMap(map)) {
+    if (isEntrance(val)) {
+      center.x = x;
+      center.y = y;
+      break;
+    }
+  }
+  // prettier-ignore
+  [
+    [-1, -1, '@'], [0, -1, '#'], [1, -1, '@'],
+    [-1,  0, '#'], [0,  0, '#'], [1,  0, '#'],
+    [-1,  1, '@'], [0,  1, '#'], [1,  1, '@'],
+  ].forEach(([dx, dy, val]) => {
+    setM(center.x + dx, center.y + dy, val, map)
+  })
+}
+
+function part2(input) {
+  const { map, width, height } = parseMap(input);
+  modifyMap(map);
+  const { keys, entrances } = locateObjectsOnMap(map);
+
+  const positions = getPositions(entrances, keys, map);
+  // drawMap(map, width, height);
+  return dfs(
+    positions,
+    getAllKeysB(positions),
+    entrances.map(x => x.val)
+  );
 }
 
 require("./Problem")({
   input() {
     return require("./Input").day(18);
   },
-  solve
+  solve(input) {
+    return {
+      "Part 1": part1(input),
+      "Part 2": part2(input)
+    };
+  }
 }).run();
 
 const case1 = `
@@ -234,7 +302,7 @@ const case1 = `
 #b.A.@.a#
 #########
 `;
-// assert.equal(solve(case1), 8);
+// assert.equal(part1(case1), 8);
 
 const case2 = `
 ########################
@@ -243,7 +311,7 @@ const case2 = `
 #d.....................#
 ########################
 `;
-// assert.equal(solve(case2), 86);
+// assert.equal(part1(case2), 86);
 
 const case3 = `
 ########################
@@ -252,7 +320,7 @@ const case3 = `
 #.....@.a.B.c.d.A.e.F.g#
 ########################
 `;
-// assert.equal(solve(case3), 132);
+// assert.equal(part1(case3), 132);
 
 const case4 = `
 #################
@@ -265,7 +333,7 @@ const case4 = `
 #l.F..d...h..C.m#
 #################
 `;
-// assert.equal(solve(case4), 136);
+// assert.equal(part1(case4), 136);
 
 const case5 = `
 ########################
@@ -275,4 +343,4 @@ const case5 = `
 ###g#h#i################
 ########################
 `;
-// assert.equal(solve(case5), 81);
+// assert.equal(part1(case5), 81);
