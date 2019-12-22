@@ -1,5 +1,17 @@
 const assert = require("assert");
 
+function createBitMap() {
+  const map = {};
+  const charCodeFor_a = "a".charCodeAt(0);
+  const charCodeFor_z = "z".charCodeAt(0);
+  for (let i = 0; i <= charCodeFor_z - charCodeFor_a; i++) {
+    map[String.fromCharCode(i + charCodeFor_a)] = Math.pow(2, i);
+  }
+  return map;
+}
+
+const BIT_MAP = createBitMap();
+
 function parseMap(str) {
   const map = {};
   let x = 0;
@@ -33,7 +45,7 @@ function drawMap(map, width, height, position = {}) {
       if (position.x === x && position.y === y) {
         result += "\x1b[44m\x1b[32m";
       }
-      result += getM(x, y, map) + " ";
+      result += getM(x, y, map) + "";
       result += "\x1b[0m";
     }
     result += "\n";
@@ -99,150 +111,115 @@ const Deltas = [
   [-1, 0]
 ];
 
-function getAllKeyDistancesAndDoors(entrance, keys, map) {
-  const result = {
-    "@": getDistancesAndDoors(entrance, map)
-  };
-
+function getPositions(entrance, keys, map) {
+  const result = { "@": getPositionsForKey(entrance, map) };
   for (const key of Object.values(keys)) {
-    result[key.val] = getDistancesAndDoors(key, map);
+    result[key.val] = getPositionsForKey(key, map);
   }
-
   return result;
 }
 
-function getDistancesAndDoors(key, map) {
+function getPositionsForKey(key, map) {
   const result = {};
 
-  const queue = [[key, [], 0]];
+  const queue = [[key, 0, 0, 0]];
   const visited = { [key.y]: { [key.x]: true } };
   while (queue.length) {
-    const [pos, doors, distance] = queue.shift();
+    const [pos, doors, distance, keys] = queue.shift();
 
     for (const [dx, dy] of Deltas) {
       const x = pos.x + dx;
       const y = pos.y + dy;
-      if (getM(x, y, visited)) {
-        continue;
-      }
+
+      if (getM(x, y, visited)) continue;
       setM(x, y, true, visited);
+
       const val = getM(x, y, map);
-      let nextDoors = doors;
-      if (isWall(val)) {
-        continue;
-      }
-      if (isDoor(val)) {
-        nextDoors = doors.concat(val);
-      }
+      let nKeys = keys;
+      let nDoors = doors;
+      let nDistance = distance + 1;
+      if (isWall(val)) continue;
+      if (isDoor(val)) nDoors |= BIT_MAP[val.toLowerCase()];
       if (isKey(val)) {
-        result[val] = { distance: distance + 1, key: val, doors };
+        nKeys |= BIT_MAP[val];
+        result[val] = { distance: nDistance, key: val, doors, keys: nKeys };
       }
-      queue.push([{ x, y }, nextDoors, distance + 1]);
+
+      queue.push([{ x, y }, nDoors, nDistance, nKeys]);
     }
   }
 
   return result;
 }
 
-function getAccessibleKeys(val, allDistancesAndDoors, availableKeys) {
-  const distancesAndDoors = allDistancesAndDoors[val];
-
+function getAccessibleKeys(val, positions, keys) {
+  const positionsForVal = positions[val];
   const result = {};
-
-  outer: for (const key in distancesAndDoors) {
-    const { doors, distance } = distancesAndDoors[key];
-    if (availableKeys[key]) {
-      continue;
-    }
-    for (let i = 0; i < doors.length; i++) {
-      if (!availableKeys[doors[i].toLowerCase()]) {
-        continue outer;
-      }
-    }
-    result[key] = distance;
+  for (const key in positionsForVal) {
+    const { doors, distance, keys: tKeys } = positionsForVal[key];
+    if ((keys & BIT_MAP[key]) !== 0) continue;
+    if (doors && (keys & doors) !== doors) continue;
+    result[key] = [distance, tKeys];
   }
-
   return result;
 }
 
-function bfs(allDistancesAndDoors) {
-  let result = Infinity;
-  const queue = [["@", 0, {}]];
-
-  const allKeysCount = Object.keys(allDistancesAndDoors).length - 1;
-
-  while (queue.length) {
-    const [val, distance, availableKeys] = queue.shift();
-    if (Object.keys(availableKeys).length === allKeysCount) {
-      result = Math.min(result, distance);
-      continue;
-    }
-
-    const accessibleKeys = getAccessibleKeys(
-      val,
-      allDistancesAndDoors,
-      availableKeys
-    );
-
-    for (let key in accessibleKeys) {
-      queue.push([
-        key,
-        distance + accessibleKeys[key],
-        { ...availableKeys, [key]: true }
-      ]);
-    }
-  }
-
-  return result;
+function getAllKeysB(positions) {
+  return Object.keys(positions)
+    .filter(x => x !== "@")
+    .reduce((acc, x) => acc | BIT_MAP[x], 0);
 }
 
-function dfs(allDistancesAndDoors) {
-  const getKey = (key, availableKeys) =>
-    key +
-    "-" +
-    Object.keys(availableKeys)
-      .sort()
-      .join();
-
-  const allKeysCount = Object.keys(allDistancesAndDoors).length - 1;
-  const cache = {};
-  function rec(key, availableKeys) {
-    const cacheKey = getKey(key, availableKeys);
-    if (cache[key]) {
-      return cache[key];
+function toArray(flags) {
+  const result = [];
+  let i = 1;
+  while (i <= flags) {
+    if ((flags & i) !== 0) {
+      result.push(i);
     }
+    i <<= 1;
+  }
+  return result.map(x => Object.entries(BIT_MAP).find(([a, b]) => b === x)[0]);
+}
 
-    if (Object.keys(availableKeys).length === allKeysCount) {
-      cache[cacheKey] = 0;
-      return 0;
-    }
-
-    let min = Infinity;
-
-    const keys = getAccessibleKeys(key, allDistancesAndDoors, availableKeys);
-
-    for (let key2 in keys) {
-      availableKeys[key2] = true;
-      const curRes = keys[key2] + rec(key2, availableKeys);
-      min = Math.min(curRes, min);
-      delete availableKeys[key2];
-    }
-    cache[cacheKey] = min;
-    return min;
+function dfs(
+  positions,
+  allKeys = getAllKeysB(positions),
+  current = "@",
+  distance = 0,
+  keys = 0,
+  memo = {}
+) {
+  if (keys === allKeys) {
+    return distance;
   }
 
-  return rec("@", {});
+  const mKey = distance + current + keys;
+  if (memo[mKey] != null) {
+    return memo[mKey];
+  }
+
+  const accessibleKeys = getAccessibleKeys(current, positions, keys);
+  const results = [];
+  for (let key in accessibleKeys) {
+    const nDistance = distance + accessibleKeys[key][0];
+    const nKeys = keys | accessibleKeys[key][1];
+    results.push(dfs(positions, allKeys, key, nDistance, nKeys, memo));
+  }
+
+  let result = Math.min(...results);
+  memo[mKey] = result;
+  return result;
 }
 
 function solve(input) {
   const { map, width, height } = parseMap(input);
-  const { keys, doors, entrance } = locateObjectsOnMap(map);
+  const { keys, entrance } = locateObjectsOnMap(map);
 
-  const distancesAndDoors = getAllKeyDistancesAndDoors(entrance, keys, map);
+  const positions = getPositions(entrance, keys, map);
 
   drawMap(map, width, height);
-  // return bfs(distancesAndDoors);
-  return dfs(distancesAndDoors);
+  return dfs(positions);
 }
 
 require("./Problem")({
