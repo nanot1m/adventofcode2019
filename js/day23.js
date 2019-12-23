@@ -9,7 +9,8 @@ require("./Problem")({
   },
   solve(regs) {
     return {
-      "Part 1": part1(regs)
+      "Part 1": part1(regs),
+      "Part 2": part2(regs)
     };
   }
 }).run();
@@ -24,15 +25,43 @@ function part1(regs) {
   }
 }
 
+function part2(regs) {
+  const { nics, inputQueues } = bootNics(regs);
+
+  let natPacket = null;
+  let twiceInRow = 2;
+
+  for (const { type, x, y, z, idle } of createNetwork(nics, inputQueues)) {
+    if (type === "packet") {
+      if (z === 255) {
+        natPacket = { x, y };
+      }
+    }
+
+    if (type === "status") {
+      if (idle) {
+        inputQueues.get(0).push(natPacket.x, natPacket.y);
+        if (--twiceInRow === 0) {
+          return natPacket.y;
+        }
+      } else {
+        twiceInRow = 2;
+      }
+    }
+  }
+}
+
 function bootNics(regs) {
   const initProgram = Computer.program(regs);
 
   const nics = Array.from(Array(50), (_, i) => initProgram.withInput([i]));
   nics.forEach(nic => nic.run());
+
   let inputQueues = new Map();
   for (let i = 0; i < nics.length; i++) {
     inputQueues.set(i, []);
   }
+
   return { nics, inputQueues };
 }
 
@@ -55,7 +84,21 @@ function* createNetwork(nics, inputQueues) {
         targetInputQueue.push(x, y);
       }
 
-      yield { z, x, y };
+      yield { type: "packet", z, x, y };
+    }
+
+    yield { type: "status", idle: isIdle(inputQueues) };
+  }
+}
+
+/**
+ * @param {Map<number, number[]>} inputQueues
+ */
+function isIdle(inputQueues) {
+  for (let input of inputQueues.values()) {
+    if (input.length > 0) {
+      return false;
     }
   }
+  return true;
 }
