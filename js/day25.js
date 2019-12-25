@@ -21,29 +21,103 @@ require("./Problem")({
   }
 }).run();
 
+const init = [
+  "west",
+  "west",
+  "west",
+  "take coin",
+  "east",
+  "east",
+  "east",
+  "north",
+  "east",
+  "take cake",
+  "east",
+  "north",
+  "take pointer",
+  "south",
+  "west",
+  "west",
+  "north",
+  "take mutex",
+  "east",
+  "take antenna",
+  "west",
+  "south",
+  "south",
+  "east",
+  "east",
+  "take tambourine",
+  "east",
+  "take fuel cell",
+  "east",
+  "take boulder",
+  "north",
+  ""
+];
+
+function getWeight(loot, program) {
+  loot = loot.slice();
+  // drop all items
+  const initDropCommands = loot.map(x => `drop ${x}`).concat("");
+  program = program.withInput(toASCII(initDropCommands.join("\n")));
+  program.run();
+  program.output.length = 0;
+
+  const bm = Math.pow(2, loot.length);
+  for (let i = 1; i < bm; i++) {
+    let took = [];
+    for (let j = 0; j < loot.length; j++) {
+      if (i & (1 << j)) {
+        took.push(loot[j]);
+      }
+    }
+
+    const takeCommands = took.map(x => `take ${x}`);
+
+    const commands = [...takeCommands, "east", ""].join("\n");
+    const { output } = program.withInput(toASCII(commands)).run();
+    const result = String.fromCharCode(...output);
+    if (result && !result.includes("ejected back to the checkpoint")) {
+      console.log(result);
+      break;
+    }
+  }
+}
+
 function part1(regs) {
   const program = require("./IntcodeComputer").program(regs);
+  program.pushInput(toASCII(init.join("\n")));
+  program.run();
+  program.output.length = 0;
   const map = { 0: { 0: "." } };
   const pos = { x: 0, y: 0 };
   let availableCommands = [];
-  let loot = [];
+  let loot = init.filter(x => x.startsWith("take")).map(x => x.slice(5));
+  getWeight(loot, program);
   let dy = 0;
   function run() {
     program.run();
-    console.clear();
-    print(program.output);
     const result = parseOutput(program.output);
-    program.output.length = 0;
 
-    if (!result.error) {
+    if (result.error == null) {
+      if (!result.doors) {
+        console.log(result);
+        process.exit(0);
+      }
       availableCommands = result.doors.concat(
         result.items.map(item => "take " + item),
-        loot.map(item => "drop " + item)
+        loot.map(item => "drop " + item),
+        "find weight"
       );
-    } else if (result.fatal) {
-      process.exit(1);
+    } else {
+      print(program.output);
+      if (result.fatal) process.exit(1);
     }
 
+    console.clear();
+    print(program.output);
+    program.output.length = 0;
     console.log("Available commands:");
     console.log(availableCommands.map(x => "- " + x).join("\n") + "\n");
 
@@ -55,25 +129,26 @@ function part1(regs) {
           console.log("Wrong command:\n'" + answer + "'\n");
           return prompt();
         }
+        if (answer === "find weight") {
+          getWeight(loot, program);
+          return run();
+        }
         program.pushInput(toASCII(answer + "\n"));
         if (answer.startsWith("take")) {
           availableCommands = availableCommands.filter(x => x !== answer);
-          loot.push(
-            answer
-              .split(/\s/)
-              .slice(1)
-              .join(" ")
-          );
+          const item = answer
+            .split(/\s/)
+            .slice(1)
+            .join(" ");
+          loot.push(item);
         } else if (answer.startsWith("drop")) {
           availableCommands = availableCommands.filter(x => x !== answer);
-          loot = loot.filter(
-            x =>
-              x !==
-              answer
-                .split(/\s/)
-                .slice(1)
-                .join(" ")
-          );
+          const item = answer
+            .split(/\s/)
+            .slice(1)
+            .join(" ");
+          availableCommands.push("take " + item);
+          loot = loot.filter(x => x !== item);
         } else {
           markMoveOnMap(answer, pos, map);
         }
@@ -83,6 +158,7 @@ function part1(regs) {
     prompt();
   }
   run();
+
   process.stdin.setRawMode(true);
   process.stdin.on("keypress", (str, key) => {
     if (str) {
